@@ -1,8 +1,8 @@
---[[ FULL GUI DELTA | ICON TRÒN | GIẢM LAG | AUTO FARM ]]
+--[[ FIX AUTO FARM | DELTA OK ]]
 
 ---------------- CONFIG ----------------
-local BACKGROUND_IMAGE_ID = "rbxassetid://77058341227936" -- nền GUI
-local ICON_IMAGE_ID = "rbxassetid://77058341227936"       -- icon tròn
+local BACKGROUND_IMAGE_ID = "rbxassetid://77058341227936"
+local ICON_IMAGE_ID = "rbxassetid://77058341227936"
 ---------------------------------------
 
 -- Services
@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
 
 -- Anti AFK
 LocalPlayer.Idled:Connect(function()
@@ -17,113 +18,142 @@ LocalPlayer.Idled:Connect(function()
     game:GetService("VirtualUser"):ClickButton2(Vector2.new())
 end)
 
--- Clear old
 pcall(function() CoreGui.TopGUI:Destroy() end)
 
----------------- SCREEN GUI ----------------
-local ScreenGui = Instance.new("ScreenGui")
+---------------- GUI ----------------
+local ScreenGui = Instance.new("ScreenGui", CoreGui)
 ScreenGui.Name = "TopGUI"
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = CoreGui
 
----------------- ICON TRÒN ----------------
-local IconBtn = Instance.new("ImageButton")
-IconBtn.Size = UDim2.new(0, 55, 0, 55)
-IconBtn.Position = UDim2.new(0, 15, 0.5, -27)
-IconBtn.Image = ICON_IMAGE_ID
-IconBtn.BackgroundTransparency = 1
-IconBtn.Parent = ScreenGui
+-- Icon tròn
+local Icon = Instance.new("ImageButton", ScreenGui)
+Icon.Size = UDim2.new(0,55,0,55)
+Icon.Position = UDim2.new(0,15,0.5,-27)
+Icon.Image = ICON_IMAGE_ID
+Icon.BackgroundTransparency = 1
+Instance.new("UICorner", Icon).CornerRadius = UDim.new(1,0)
 
-local UICornerIcon = Instance.new("UICorner")
-UICornerIcon.CornerRadius = UDim.new(1, 0)
-UICornerIcon.Parent = IconBtn
-
----------------- MAIN GUI ----------------
-local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 230, 0, 210)
-Main.Position = UDim2.new(0, 80, 0.5, -105)
+-- Main
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0,230,0,210)
+Main.Position = UDim2.new(0,80,0.5,-105)
 Main.BackgroundTransparency = 1
 Main.Visible = false
-Main.Parent = ScreenGui
+
+Icon.MouseButton1Click:Connect(function()
+    Main.Visible = not Main.Visible
+end)
 
 -- Drag
-local dragging, dragStart, startPos
+local drag, ds, sp
 Main.InputBegan:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = i.Position
-        startPos = Main.Position
+        drag = true ds = i.Position sp = Main.Position
         i.Changed:Connect(function()
-            if i.UserInputState == Enum.UserInputState.End then dragging = false end
+            if i.UserInputState == Enum.UserInputState.End then drag = false end
         end)
     end
 end)
 Main.InputChanged:Connect(function(i)
-    if dragging then
-        local delta = i.Position - dragStart
-        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
-                                  startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    if drag then
+        local d = i.Position - ds
+        Main.Position = UDim2.new(sp.X.Scale, sp.X.Offset + d.X, sp.Y.Scale, sp.Y.Offset + d.Y)
     end
 end)
 
--- Background image
-local BG = Instance.new("ImageLabel")
+-- Background
+local BG = Instance.new("ImageLabel", Main)
 BG.Size = UDim2.new(1,0,1,0)
 BG.Image = BACKGROUND_IMAGE_ID
 BG.BackgroundTransparency = 1
-BG.Parent = Main
 
--- Icon toggle GUI
-IconBtn.MouseButton1Click:Connect(function()
-    Main.Visible = not Main.Visible
-end)
-
----------------- BUTTON MAKER ----------------
-local function MakeButton(text, y)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(1, -20, 0, 35)
-    b.Position = UDim2.new(0, 10, 0, y)
-    b.Text = text
+-- Button maker
+local function Btn(txt,y)
+    local b = Instance.new("TextButton", Main)
+    b.Size = UDim2.new(1,-20,0,35)
+    b.Position = UDim2.new(0,10,0,y)
+    b.Text = txt
     b.TextColor3 = Color3.new(1,1,1)
     b.BackgroundColor3 = Color3.new(0,0,0)
     b.BackgroundTransparency = 0.3
     b.BorderSizePixel = 0
-    b.Parent = Main
     return b
 end
 
----------------- BUTTONS ----------------
-local AutoFarmBtn   = MakeButton("Auto Farm: OFF", 15)
-local LagBtn        = MakeButton("Reduce Lag: OFF", 60)
-local BlackBtn      = MakeButton("Black Screen: OFF", 105)
+local AutoBtn  = Btn("Auto Farm: OFF", 15)
+local LagBtn   = Btn("Reduce Lag: OFF", 60)
+local BlackBtn = Btn("Black Screen: OFF", 105)
 
----------------- AUTO FARM ----------------
+------------------------------------------------
+-- ✅ AUTO FARM FIX
+------------------------------------------------
 local AutoFarm = false
-AutoFarmBtn.MouseButton1Click:Connect(function()
+
+local POINT_A = Vector3.new(-6205.29, 100, 8219.85)
+local POINT_B = Vector3.new(-7594.54, 100, 5130.95)
+
+local function getVehicle()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or not hum.SeatPart then return end
+    return hum.SeatPart.Parent
+end
+
+local function getPrimaryPart(model)
+    if model.PrimaryPart then return model.PrimaryPart end
+    for _,v in ipairs(model:GetDescendants()) do
+        if v:IsA("BasePart") then
+            model.PrimaryPart = v
+            return v
+        end
+    end
+end
+
+AutoBtn.MouseButton1Click:Connect(function()
     AutoFarm = not AutoFarm
-    AutoFarmBtn.Text = AutoFarm and "Auto Farm: ON" or "Auto Farm: OFF"
+    AutoBtn.Text = AutoFarm and "Auto Farm: ON" or "Auto Farm: OFF"
+
+    if AutoFarm then
+        task.spawn(function()
+            while AutoFarm do
+                local car = getVehicle()
+                if not car then task.wait(1) continue end
+
+                local root = getPrimaryPart(car)
+                if not root then task.wait(1) continue end
+
+                for _,pos in ipairs({POINT_A, POINT_B}) do
+                    while AutoFarm and (LocalPlayer:DistanceFromCharacter(pos) > 50) do
+                        root.Velocity = root.CFrame.LookVector * 550
+                        car:PivotTo(CFrame.new(root.Position, pos))
+                        RunService.Heartbeat:Wait()
+                    end
+                    root.Velocity = Vector3.zero
+                end
+            end
+        end)
+    end
 end)
 
----------------- GIẢM LAG ----------------
+------------------------------------------------
+-- GIẢM LAG (CODE CỦA BẠN)
+------------------------------------------------
 local LagOn = false
 LagBtn.MouseButton1Click:Connect(function()
     LagOn = not LagOn
     LagBtn.Text = LagOn and "Reduce Lag: ON" or "Reduce Lag: OFF"
 
     if LagOn then
-        -- Lighting
         Lighting.GlobalShadows = false
         Lighting.FogEnd = 1e9
         Lighting.Brightness = 1
 
         for _,v in ipairs(Lighting:GetChildren()) do
-            if v:IsA("PostEffect") then
-                v.Enabled = false
-            end
+            if v:IsA("PostEffect") then v.Enabled = false end
         end
 
-        -- Workspace
         for _,v in ipairs(workspace:GetDescendants()) do
             if v:IsA("BasePart") then
                 v.Material = Enum.Material.Plastic
@@ -135,24 +165,21 @@ LagBtn.MouseButton1Click:Connect(function()
     end
 end)
 
----------------- BLACK SCREEN ----------------
+------------------------------------------------
+-- BLACK SCREEN
+------------------------------------------------
 BlackBtn.MouseButton1Click:Connect(function()
     local old = CoreGui:FindFirstChild("BlackScreen")
     if old then
         old:Destroy()
         BlackBtn.Text = "Black Screen: OFF"
     else
-        local BS = Instance.new("ScreenGui")
+        local BS = Instance.new("ScreenGui", CoreGui)
         BS.Name = "BlackScreen"
-        BS.IgnoreGuiInset = true
-        BS.Parent = CoreGui
-
-        local F = Instance.new("Frame")
+        local F = Instance.new("Frame", BS)
         F.Size = UDim2.new(1,0,1,0)
         F.BackgroundColor3 = Color3.new(0,0,0)
         F.BorderSizePixel = 0
-        F.Parent = BS
-
         BlackBtn.Text = "Black Screen: ON"
     end
 end)
