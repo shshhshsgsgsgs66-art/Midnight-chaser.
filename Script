@@ -133,7 +133,7 @@ autoFarmToggle.MouseButton1Click:Connect(function()
                 for _,loc in pairs({loc1, loc2}) do
                     repeat
                         task.wait()
-                        car.PrimaryPart.Velocity = car.PrimaryPart.CFrame.LookVector * 650
+                        car.PrimaryPart.Velocity = car.PrimaryPart.CFrame.LookVector * 700
                         car:PivotTo(CFrame.new(car.PrimaryPart.Position, loc))
                     until LocalPlayer:DistanceFromCharacter(loc) < 25 or not autoFarmActive
                     car.PrimaryPart.Velocity = Vector3.zero
