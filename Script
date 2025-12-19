@@ -1,0 +1,166 @@
+--[[ 
+    FULL GUI + IMAGE BACKGROUND
+    Delta / Mobile OK
+]]
+
+---------------- CONFIG ----------------
+local BACKGROUND_IMAGE_ID = "rbxassetid://77058341227936" -- ĐỔI ID Ở ĐÂY
+---------------------------------------
+
+-- Anti AFK
+warn("Anti AFK running")
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    game:GetService("VirtualUser"):CaptureController()
+    game:GetService("VirtualUser"):ClickButton2(Vector2.new())
+end)
+
+-- Services
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+
+-- Remove old GUI
+pcall(function()
+    CoreGui.TopGUI:Destroy()
+end)
+
+-- ScreenGui
+local guiScreen = Instance.new("ScreenGui")
+guiScreen.Name = "TopGUI"
+guiScreen.IgnoreGuiInset = true
+guiScreen.ResetOnSpawn = false
+guiScreen.Parent = CoreGui
+
+-- Main Frame
+local guiFrame = Instance.new("Frame")
+guiFrame.Size = UDim2.new(0, 220, 0, 160)
+guiFrame.Position = UDim2.new(0, 20, 0, 80)
+guiFrame.BackgroundTransparency = 1
+guiFrame.Parent = guiScreen
+
+-- Drag
+local dragging, dragStart, startPos
+guiFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = guiFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+guiFrame.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+        local delta = input.Position - dragStart
+        guiFrame.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- Background Image
+local bgImage = Instance.new("ImageLabel")
+bgImage.Size = UDim2.new(1, 0, 1, 0)
+bgImage.Image = BACKGROUND_IMAGE_ID
+bgImage.ScaleType = Enum.ScaleType.Stretch
+bgImage.BackgroundTransparency = 1
+bgImage.ZIndex = 0
+bgImage.Parent = guiFrame
+
+-- Auto Farm Button
+local autoFarmToggle = Instance.new("TextButton")
+autoFarmToggle.Size = UDim2.new(1, -20, 0, 35)
+autoFarmToggle.Position = UDim2.new(0, 10, 0, 15)
+autoFarmToggle.Text = "Auto Farm: OFF"
+autoFarmToggle.TextColor3 = Color3.fromRGB(255,255,255)
+autoFarmToggle.BackgroundColor3 = Color3.fromRGB(0,0,0)
+autoFarmToggle.BackgroundTransparency = 0.3
+autoFarmToggle.BorderSizePixel = 0
+autoFarmToggle.ZIndex = 1
+autoFarmToggle.Parent = guiFrame
+
+-- Black Screen Button
+local blackScreenToggle = Instance.new("TextButton")
+blackScreenToggle.Size = UDim2.new(1, -20, 0, 35)
+blackScreenToggle.Position = UDim2.new(0, 10, 0, 60)
+blackScreenToggle.Text = "Black Screen: OFF"
+blackScreenToggle.TextColor3 = Color3.fromRGB(255,255,255)
+blackScreenToggle.BackgroundColor3 = Color3.fromRGB(0,0,0)
+blackScreenToggle.BackgroundTransparency = 0.3
+blackScreenToggle.BorderSizePixel = 0
+blackScreenToggle.ZIndex = 1
+blackScreenToggle.Parent = guiFrame
+
+---------------- AUTO FARM ----------------
+local autoFarmActive = false
+
+autoFarmToggle.MouseButton1Click:Connect(function()
+    autoFarmActive = not autoFarmActive
+    autoFarmToggle.Text = autoFarmActive and "Auto Farm: ON" or "Auto Farm: OFF"
+
+    if autoFarmActive then
+        task.spawn(function()
+            while autoFarmActive do
+                for _,v in pairs(workspace:GetChildren()) do
+                    if v:IsA("Model") and (v:FindFirstChild("Container") or v.Name == "PortCraneOversized") then
+                        pcall(function() v:Destroy() end)
+                    end
+                end
+                task.wait(1)
+            end
+        end)
+
+        task.spawn(function()
+            while autoFarmActive do
+                local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+                local hum = char:WaitForChild("Humanoid")
+                if not hum.SeatPart then task.wait(1) continue end
+
+                local car = hum.SeatPart.Parent
+                if not car or not car:FindFirstChild("Body") then task.wait(1) continue end
+
+                car.PrimaryPart = car.Body:FindFirstChild("#Weight") or car.Body:FindFirstChildWhichIsA("BasePart")
+                if not car.PrimaryPart then task.wait(1) continue end
+
+                local loc1 = Vector3.new(-6205.29,100,8219.85)
+                local loc2 = Vector3.new(-7594.54,100,5130.95)
+
+                for _,loc in pairs({loc1, loc2}) do
+                    repeat
+                        task.wait()
+                        car.PrimaryPart.Velocity = car.PrimaryPart.CFrame.LookVector * 750
+                        car:PivotTo(CFrame.new(car.PrimaryPart.Position, loc))
+                    until LocalPlayer:DistanceFromCharacter(loc) < 50 or not autoFarmActive
+                    car.PrimaryPart.Velocity = Vector3.zero
+                end
+            end
+        end)
+    end
+end)
+
+---------------- BLACK SCREEN ----------------
+blackScreenToggle.MouseButton1Click:Connect(function()
+    local old = CoreGui:FindFirstChild("BlackScreen")
+    if old then
+        old:Destroy()
+        blackScreenToggle.Text = "Black Screen: OFF"
+    else
+        local bs = Instance.new("ScreenGui")
+        bs.Name = "BlackScreen"
+        bs.IgnoreGuiInset = true
+        bs.Parent = CoreGui
+
+        local f = Instance.new("Frame")
+        f.Size = UDim2.new(1,0,1,0)
+        f.BackgroundColor3 = Color3.new(0,0,0)
+        f.BorderSizePixel = 0
+        f.Parent = bs
+
+        blackScreenToggle.Text = "Black Screen: ON"
+    end
+end)
